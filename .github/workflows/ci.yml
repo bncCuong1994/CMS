@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: cms
+          POSTGRES_PASSWORD: cms
+          POSTGRES_DB: cms_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cms"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cms:cms@localhost:5432/cms_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kiểm tra hook Claude
+        run: |
+          for f in .claude/hooks/*.mjs; do node --check "$f"; done
+          node -e "JSON.parse(require('fs').readFileSync('.claude/settings.json','utf8'))"
+
+      - name: Có mã nguồn chưa
+        id: src
+        run: echo "present=$([ -f pnpm-workspace.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+        if: steps.src.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.src.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Cài dependency
+        if: steps.src.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Prisma generate + migrate
+        if: steps.src.outputs.present == 'true' && hashFiles('apps/api/prisma/schema.prisma') != ''
+        run: |
+          pnpm --filter api exec prisma generate
+          pnpm --filter api exec prisma migrate deploy
+      - name: Lint
+        if: steps.src.outputs.present == 'true'
+        run: pnpm -r --if-present run lint
+      - name: Typecheck và build
+        if: steps.src.outputs.present == 'true'
+        run: pnpm -r --if-present run build
+      - name: Test
+        if: steps.src.outputs.present == 'true'
+        run: pnpm -r --if-present run test
+      - name: Test e2e API
+        if: steps.src.outputs.present == 'true'
+        run: pnpm --filter api --if-present run test:e2e
