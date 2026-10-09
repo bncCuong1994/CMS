@@ -1,0 +1,25 @@
+{
+  "name": "@cms/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mã quyền, vai trò và kiểu dữ liệu dùng chung giữa API và web",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "scripts": {
+    "prepare": "pnpm run build",
+    "build": "tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && node -e \"require('fs').writeFileSync('dist/cjs/package.json','{\\\"type\\\":\\\"commonjs\\\"}')\"",
+    "lint": "tsc -p tsconfig.esm.json --noEmit",
+    "test": "echo 'no tests'"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}
