@@ -9,7 +9,7 @@ export { ApiError, type ApiErrorCode } from './api-error';
  */
 export const api = {
   get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return http.get<T>(url, config).then((r) => r.data);
+    return http.get<T>(url, config).then((r) => (r.status === 204 ? (undefined as T) : r.data));
   },
   post<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
     return http.post<T>(url, body, config).then((r) => (r.status === 204 ? (undefined as T) : r.data));

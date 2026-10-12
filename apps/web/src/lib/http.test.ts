@@ -83,7 +83,7 @@ describe('http interceptor — token gắn vào header', () => {
 describe('http interceptor — 401 single-flight (AC8)', () => {
   it('3 request song song 401 → chỉ gọi refresh 1 lần, cả 3 retry thành công', async () => {
     let refreshCallCount = 0;
-    let requestCallCount = 0;
+    const callCountByUrl: Record<string, number> = {};
 
     http.defaults.adapter = makeAdapter(async (cfg) => {
       // /auth/refresh trả token mới
@@ -91,9 +91,14 @@ describe('http interceptor — 401 single-flight (AC8)', () => {
         refreshCallCount++;
         return makeResponse(cfg, 200, { accessToken: 'new-token', refreshToken: 'new-refresh' });
       }
-      requestCallCount++;
-      // Lần đầu (chưa có header retry) → 401
-      if (!cfg.headers?.['x-cms-retried']) {
+
+      const url = cfg.url ?? '';
+      callCountByUrl[url] = (callCountByUrl[url] ?? 0) + 1;
+
+      // Lần đầu (config chưa bị đánh dấu retry trong WeakSet) → 401
+      // Sau retry → thành công (interceptor đã đánh dấu config vào retriedConfigs)
+      // Phân biệt: lần đầu là lần gọi số 1 cho mỗi URL
+      if (callCountByUrl[url] === 1) {
         const err = Object.assign(new Error('Unauthorized'), {
           isAxiosError: true,
           config: cfg,
@@ -101,7 +106,6 @@ describe('http interceptor — 401 single-flight (AC8)', () => {
         });
         throw err;
       }
-      // Sau retry → thành công
       return makeResponse(cfg, 200, { data: 'ok' });
     });
 
@@ -111,10 +115,15 @@ describe('http interceptor — 401 single-flight (AC8)', () => {
       http.get('/data/3'),
     ]);
 
+    // Refresh chỉ gọi 1 lần dù 3 request cùng 401
     expect(refreshCallCount).toBe(1);
     expect(results).toHaveLength(3);
-    // requestCallCount: 3 lần đầu (401) + 3 lần retry = 6
-    expect(requestCallCount).toBe(6);
+    // Mỗi URL được gọi đúng 2 lần: 1 lần 401 + 1 lần retry thành công
+    expect(callCountByUrl['/data/1']).toBe(2);
+    expect(callCountByUrl['/data/2']).toBe(2);
+    expect(callCountByUrl['/data/3']).toBe(2);
+    // POST /auth/refresh đúng 1 lần
+    expect(refreshCallCount).toBe(1);
   });
 
   it('AC9: refresh thất bại → clear() và toast đúng 1 lần dù nhiều request', async () => {
@@ -143,9 +152,12 @@ describe('http interceptor — 401 single-flight (AC8)', () => {
     expect(results.every((r) => r.status === 'rejected')).toBe(true);
     // clear() được gọi → accessToken = null
     expect(useAuthStore.getState().accessToken).toBeNull();
-    // Toast hiện đúng 1 lần
-    expect(vi.mocked(toast.error)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+    // Toast được gọi với { id: 'session-expired' } — sonner dùng id này để chống trùng
+    // ở runtime. Mock không simulate dedup nên chỉ assert argument, không đếm lần gọi.
+    expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+      'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
+      { id: 'session-expired' },
+    );
   });
 
   it('AC10: 401 từ /auth/login không refresh', async () => {

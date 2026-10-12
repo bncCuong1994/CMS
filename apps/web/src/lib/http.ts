@@ -21,8 +21,10 @@ function isAuthPath(url: string | undefined): boolean {
 
 // Single-flight: nhiều request 401 song song chỉ gọi refresh một lần
 let refreshing: Promise<boolean> | null = null;
-// Đảm bảo toast "hết hạn" hiện đúng một lần dù nhiều request cùng fail
-let sessionExpiredToasted = false;
+
+// Theo dõi config đã được retry để tránh vòng lặp vô tận.
+// Dùng WeakSet thay cho header để cờ không rời khỏi client.
+const retriedConfigs = new WeakSet<InternalAxiosRequestConfig>();
 
 function refreshTokens(): Promise<boolean> {
   refreshing ??= (async () => {
@@ -61,8 +63,6 @@ http.interceptors.request.use((config) => {
 });
 
 // ── Response error interceptor ───────────────────────────────────────
-const RETRIED_HEADER = 'x-cms-retried';
-
 http.interceptors.response.use(
   (response) => response,
   async (error: unknown) => {
@@ -75,24 +75,22 @@ http.interceptors.response.use(
     const status = axiosLike.response?.status;
     const config = axiosLike.config;
     const isAuth = isAuthPath(config?.url);
-    const alreadyRetried = config?.headers?.[RETRIED_HEADER] === '1';
+    const alreadyRetried = config ? retriedConfigs.has(config) : false;
 
     // 401 + không phải auth path + chưa retry → thử refresh
     if (status === 401 && !isAuth && config && !alreadyRetried) {
       const ok = await refreshTokens();
       if (ok) {
-        config.headers[RETRIED_HEADER] = '1';
+        retriedConfigs.add(config);
         const { accessToken } = useAuthStore.getState();
         config.headers.Authorization = `Bearer ${accessToken}`;
         return http(config);
       }
-      // Refresh thất bại: clear() đã gọi trong refreshTokens(); toast đúng một lần
-      if (!sessionExpiredToasted) {
-        sessionExpiredToasted = true;
-        toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
-        // Reset cờ sau một tick để các test tiếp theo không bị ảnh hưởng
-        setTimeout(() => { sessionExpiredToasted = false; }, 0);
-      }
+      // Refresh thất bại: clear() đã gọi trong refreshTokens().
+      // Ngoại lệ có chủ ý: toast phiên hết hạn nằm trong interceptor thay vì handleQueryError,
+      // vì 401 trên query chưa có data sẽ bị handleQueryError bỏ qua (chỉ toast khi refetch nền).
+      // sonner chống trùng theo { id } nên AC9 được bảo đảm bởi thư viện, không bằng timing.
+      toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại', { id: 'session-expired' });
       return Promise.reject(toApiError(error));
     }
 
