@@ -11,6 +11,7 @@ const USER_SELECT = {
   id: true,
   email: true,
   fullName: true,
+  phone: true,
   position: true,
   status: true,
   lastLoginAt: true,
@@ -68,6 +69,7 @@ export class UsersService {
         data: {
           email,
           fullName: dto.fullName,
+          phone: dto.phone,
           position: dto.position,
           passwordHash,
           departments: { create: { departmentId: department.id } },

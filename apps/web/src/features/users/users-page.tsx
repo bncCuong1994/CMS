@@ -1,19 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { PERMISSIONS } from '@cms/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { api } from '@/lib/api';
+import { Can } from '@/features/auth/can';
 import { ROLE_LABELS } from '@/lib/labels';
+import { useUsers, type UserRow } from './api';
+import { CreateUserDialog } from './create-user-dialog';
 
-interface UserRow {
-  id: string;
-  email: string;
-  fullName: string;
-  position: string | null;
-  status: 'active' | 'inactive' | 'locked';
-  lastLoginAt: string | null;
-  departments: { id: string; name: string }[];
-  roles: { role: string; departmentId: string | null }[];
-}
+const EMPTY_CELL = '–';
 
 const STATUS: Record<UserRow['status'], { label: string; variant: 'secondary' | 'outline' | 'destructive' }> = {
   active: { label: 'Hoạt động', variant: 'secondary' },
@@ -22,20 +15,27 @@ const STATUS: Record<UserRow['status'], { label: string; variant: 'secondary' | 
 };
 
 export function UsersPage() {
-  const { data, isPending, error } = useQuery({ queryKey: ['users'], queryFn: () => api<UserRow[]>('/users') });
+  const { data, isPending, error } = useUsers();
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Người dùng</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Người dùng</h1>
+        <Can permission={PERMISSIONS.USER_CREATE}>
+          <CreateUserDialog />
+        </Can>
+      </div>
       {isPending && <p className="text-muted-foreground">Đang tải...</p>}
       {error && <p className="text-destructive">{error.message}</p>}
-      {data && (
+      {data?.length === 0 && <p className="text-muted-foreground">Chưa có người dùng nào.</p>}
+      {data && data.length > 0 && (
         <div className="rounded-lg border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Họ tên</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Số điện thoại</TableHead>
                 <TableHead>Phòng ban</TableHead>
                 <TableHead>Vai trò</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -47,12 +47,13 @@ export function UsersPage() {
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.fullName}</TableCell>
                   <TableCell>{u.email}</TableCell>
-                  <TableCell>{u.departments.map((d) => d.name).join(', ') || '–'}</TableCell>
+                  <TableCell>{u.phone ?? EMPTY_CELL}</TableCell>
+                  <TableCell>{u.departments.map((d) => d.name).join(', ') || EMPTY_CELL}</TableCell>
                   <TableCell>{[...new Set(u.roles.map((r) => ROLE_LABELS[r.role] ?? r.role))].join(', ')}</TableCell>
                   <TableCell>
                     <Badge variant={STATUS[u.status].variant}>{STATUS[u.status].label}</Badge>
                   </TableCell>
-                  <TableCell>{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('vi-VN') : '–'}</TableCell>
+                  <TableCell>{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('vi-VN') : EMPTY_CELL}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

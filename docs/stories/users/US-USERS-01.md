@@ -138,11 +138,14 @@ Ca bắt buộc phải có test: **Admin phòng Audio gọi `POST /users` với 
 { "id": "uuid", "email": "nhanvien@cms.local", "fullName": "Nguyễn Văn A", "status": "active" }
 ```
 
+⚠️ **Response `201` KHÔNG trả `phone`** (hàm `create` dùng `select` riêng, hẹp hơn `USER_SELECT`). FE đừng đọc `phone` từ response tạo; muốn hiện ngay thì dựa vào `invalidateQueries(['users'])` để nạp lại `GET /users` — chỗ đó mới có `phone`.
+
 **Mã lỗi**
 
 | Mã | Khi nào | Thông báo |
 |---|---|---|
 | `400` | validate DTO thất bại | mảng message của class-validator |
+| `403` | ⚠️ **thiếu `departmentId` trong body** và người gọi không có quyền `global` | `Thiếu phòng ban` — guard chạy trước `ValidationPipe` nên Admin nhận 403 thay vì 400; Super Admin cùng body đó nhận 400. Đã chốt chấp nhận, xem `docs/decisions.md`. |
 | `401` | không có / sai access token | `Unauthorized` |
 | `403` | thiếu `user.create`, hoặc `departmentId` ngoài phạm vi | `Không có quyền...` |
 | `403` | tạo `ADMIN` mà không có `role.manage` global | `Chỉ Super Admin được tạo tài khoản Admin` |
@@ -161,13 +164,20 @@ Ca bắt buộc phải có test: **Admin phòng Audio gọi `POST /users` với 
 
 ## Task
 
-### BE-01 — Thêm `phone` vào luồng tạo người dùng
+### BE-01 — Thêm `phone` vào luồng tạo người dùng — ✅ XONG (2026-10-12)
 - Thêm `phone?: string` vào `CreateUserDto` (`@IsOptional() @IsString()`, kèm `@ApiPropertyOptional`).
-- Truyền `phone` vào `prisma.user.create`. Cột `phone` đã có trong schema, **không cần migration**.
-- Bổ sung `phone` vào `USER_SELECT` nếu muốn hiện ở bảng (tuỳ chọn).
+- Truyền `phone` vào `prisma.user.create`. Cột `phone` đã có trong schema (`schema.prisma:44`), **không cần migration**.
+- Bổ sung `phone` vào `USER_SELECT` (đã làm) → `GET /users` giờ trả thêm trường `phone`.
 - Giữ nguyên toàn bộ logic phân quyền và transaction hiện tại — **không sửa**.
 
-### FE-01 — Nút và popup tạo người dùng
+File đã sửa: `apps/api/src/modules/users/dto.ts`, `apps/api/src/modules/users/users.service.ts`. Lint + build + test (6/6) đã qua.
+
+### FE-01 — Nút và popup tạo người dùng — ✅ XONG (2026-10-12)
+File thêm: `components/ui/{dialog,select,form,sonner}.tsx`; `features/users/{api.ts,schemas.ts,create-user-dialog.tsx,role-permissions-preview.tsx,use-can-create-admin.ts}`; `lib/departments.ts`; `test-utils.tsx` + 2 file test.
+File sửa: `users-page.tsx`, `app-layout.tsx` (mount `<Toaster />`), `departments-page.tsx` (chuyển sang `useDepartments()`), `test-setup.ts` (stub `ResizeObserver`/pointer capture cho Radix trong jsdom).
+Deps: `react-hook-form`, `zod`, `@hookform/resolvers`, `sonner`, `@radix-ui/react-{dialog,select}`, dev `@testing-library/user-event`.
+Lint + build qua; 15/15 test Vitest pass (trong đó 12 test mới của FE phần TEST-01).
+
 - Cài `react-hook-form`, `zod`, `@hookform/resolvers`; thêm shadcn `dialog`, `select`, `form`.
 - Nút "Tạo người dùng" ở đầu màn Người dùng, bọc trong kiểm tra quyền `user.create`.
 - Popup dùng `Dialog` + `react-hook-form` + schema zod khớp đúng ràng buộc ở bảng trên.
@@ -177,7 +187,11 @@ Ca bắt buộc phải có test: **Admin phòng Audio gọi `POST /users` với 
 - Submit bằng `useMutation`; thành công thì `invalidateQueries(['users'])`, đóng popup, hiện toast.
 - Lỗi `409` phải map vào trường Email và **giữ popup mở**.
 
-### TEST-01 — Kiểm thử
+### TEST-01 — Kiểm thử — ✅ XONG (2026-10-12)
+**BE:** `test/users-create.e2e-spec.ts` (43 test) + hạ tầng `test/setup/global-{setup,teardown}.ts` (Testcontainers `postgres:17-alpine`, db `cms_test`, `prisma migrate deploy`), `test/helpers/test-app.ts`, `test/fixtures/actors.ts` (3 phòng ngang cấp + 7 tài khoản, token lấy bằng **đăng nhập thật** qua `POST /auth/login`). Ma trận kết quả thực tế: `docs/test-cases/users.md`. `test:e2e` 57/57 pass.
+**FE:** 12 test trong `features/users/*.test.tsx`. Tổng web 15/15 pass.
+Mọi ca không-201 đều snapshot số dòng `users`/`department_members`/`user_roles`/`audit_logs` trước-sau và assert không đổi. Ca User/Intern 403 có bước gọi `GET /auth/me` → 200 ngay trước để chứng minh token thật sự hợp lệ (403 đến từ phân quyền, không phải token hỏng). Mật khẩu: kiểm hash `$argon2`, `argon2.verify` đúng, và raw query `users::text LIKE '%<password>%'` trả 0 dòng.
+
 - **BE (Jest + Supertest):** ma trận phân quyền 4 vai trò ở bảng trên; ca Admin phòng Audio tạo ở phòng Marketing → 403; ca Admin tạo `ADMIN` → 403; email trùng → 409; phòng ban không tồn tại → 404; tạo thành công → kiểm tra `department_members`, `user_roles` (`scope_type`, `scope_id`) và một dòng `audit_logs` `action='user.create'`.
 - **FE (Vitest + Testing Library):** nút ẩn với User/Intern; validate chặn submit khi thiếu trường; khối quyền đổi đúng khi đổi vai trò (`INTERN` → 2 quyền, `USER` → 5 quyền); lỗi 409 hiện dưới trường Email và popup không đóng.
 

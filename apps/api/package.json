@@ -7,6 +7,7 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "tsc --noEmit",
+    "lint:test": "tsc -p test/tsconfig.json --noEmit",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.config.js --runInBand",
     "prisma:generate": "prisma generate",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",
     "@nestjs/testing": "^11.1.0",
+    "@testcontainers/postgresql": "^12.2.0",
     "@types/express": "^5.0.3",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.0",

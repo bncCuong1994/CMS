@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ROLES } from '@cms/shared-types';
-import { IsEmail, IsIn, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 const DEPARTMENT_ROLES = [ROLES.ADMIN, ROLES.USER, ROLES.INTERN] as const;
 export type DepartmentRole = (typeof DEPARTMENT_ROLES)[number];
@@ -26,6 +26,12 @@ export class CreateUserDto {
   @IsString()
   @MinLength(8)
   password: string;
+
+  @ApiPropertyOptional({ maxLength: 20 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
 
   @ApiProperty()
   @IsUUID()

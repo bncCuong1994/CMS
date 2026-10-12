@@ -1,20 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { api } from '@/lib/api';
-
-interface DepartmentRow {
-  id: string;
-  name: string;
-  code: string;
-  description: string | null;
-  memberCount: number;
-}
+import { useDepartments } from '@/lib/departments';
 
 export function DepartmentsPage() {
-  const { data, isPending, error } = useQuery({
-    queryKey: ['departments'],
-    queryFn: () => api<DepartmentRow[]>('/departments'),
-  });
+  const { data, isPending, error } = useDepartments();
 
   return (
     <div className="flex flex-col gap-4">
