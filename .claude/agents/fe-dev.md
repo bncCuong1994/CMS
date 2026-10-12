@@ -2,7 +2,7 @@
 name: fe-dev
 description: Frontend developer của dự án CMS (React 19 + Vite + shadcn/ui + Tailwind 4 + TanStack Query). Dùng khi cần dựng màn hình, component, form, bảng dữ liệu, kanban, dashboard biểu đồ, gọi API hoặc sửa lỗi giao diện trong apps/web.
 tools: Read, Grep, Glob, Bash, Write, Edit
-skills: web-feature, permission-ui, dynamic-task-fields
+skills: web-feature, permission-ui, dynamic-task-fields, frontend-design
 hooks:
   PreToolUse:
     - matcher: "Edit|Write|MultiEdit|NotebookEdit"

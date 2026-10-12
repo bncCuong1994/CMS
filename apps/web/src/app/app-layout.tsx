@@ -2,6 +2,7 @@ import { hasPermission } from '@cms/shared-types';
 import { LogOut } from 'lucide-react';
 import { NavLink, Navigate, Outlet } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { Toaster } from '@/components/ui/sonner';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { api } from '@/lib/api';
 import { ROLE_LABELS } from '@/lib/labels';
@@ -18,7 +19,7 @@ export function AppLayout() {
     .join(', ');
 
   async function logout() {
-    if (refreshToken) await api('/auth/logout', { method: 'POST', json: { refreshToken } }).catch(() => {});
+    if (refreshToken) await api.post('/auth/logout', { refreshToken }).catch(() => {});
     clear();
   }
 
@@ -56,6 +57,7 @@ export function AppLayout() {
       <main className="flex-1 p-6 md:p-8">
         <Outlet />
       </main>
+      <Toaster />
     </div>
   );
 }
