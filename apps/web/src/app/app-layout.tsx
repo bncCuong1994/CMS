@@ -19,7 +19,7 @@ export function AppLayout() {
     .join(', ');
 
   async function logout() {
-    if (refreshToken) await api('/auth/logout', { method: 'POST', json: { refreshToken } }).catch(() => {});
+    if (refreshToken) await api.post('/auth/logout', { refreshToken }).catch(() => {});
     clear();
   }
 

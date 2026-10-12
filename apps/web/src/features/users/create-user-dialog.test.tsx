@@ -10,7 +10,7 @@ import { CreateUserDialog } from './create-user-dialog';
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>();
-  return { ...actual, api: vi.fn() };
+  return { ...actual, api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() } };
 });
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -22,22 +22,26 @@ const DEPARTMENTS = [
   { id: DEPT_VIDEO, name: 'Video', code: 'VIDEO', description: null, memberCount: 3 },
 ];
 
-const apiMock = api as unknown as Mock;
+const apiGetMock = api.get as unknown as Mock;
+const apiPostMock = api.post as unknown as Mock;
 
 function mockApi(createHandler?: () => unknown) {
-  apiMock.mockImplementation((path: string, init?: { method?: string }) => {
+  apiGetMock.mockImplementation((path: string) => {
     if (path === '/departments') return Promise.resolve(DEPARTMENTS);
-    if (path === '/users' && init?.method === 'POST') {
+    if (path === '/users') return Promise.resolve([]);
+    return Promise.reject(new Error(`Không mong đợi gọi GET ${path}`));
+  });
+  apiPostMock.mockImplementation((path: string) => {
+    if (path === '/users') {
       return createHandler
         ? Promise.resolve(createHandler())
         : Promise.resolve({ id: 'new', email: 'a@b.local', fullName: 'A B', status: 'active' });
     }
-    if (path === '/users') return Promise.resolve([]);
-    return Promise.reject(new Error(`Không mong đợi gọi ${path}`));
+    return Promise.reject(new Error(`Không mong đợi gọi POST ${path}`));
   });
 }
 
-/** Admin một phòng, có cả `role.manage` ở phạm vi phòng (bẫy của AC8). */
+/** Admin một phòng, có cả `role.manage` ở phạm vi phòng ban (bẫy của AC8). */
 function loginAsDepartmentAdmin() {
   loginWithGrants({
     global: [],
@@ -60,11 +64,11 @@ async function chooseOption(user: UserEvent, comboboxName: RegExp, optionName: s
 }
 
 function postCalls() {
-  return apiMock.mock.calls.filter(([path, init]) => path === '/users' && init?.method === 'POST');
+  return apiPostMock.mock.calls.filter(([path]) => path === '/users');
 }
 
 function listUsersCalls() {
-  return apiMock.mock.calls.filter(([path, init]) => path === '/users' && init?.method !== 'POST');
+  return apiGetMock.mock.calls.filter(([path]) => path === '/users');
 }
 
 /**
@@ -77,7 +81,8 @@ function UsersListProbe() {
 }
 
 beforeEach(() => {
-  apiMock.mockReset();
+  apiGetMock.mockReset();
+  apiPostMock.mockReset();
   vi.mocked(toast.success).mockClear();
   vi.mocked(toast.error).mockClear();
   mockApi();
@@ -191,7 +196,7 @@ describe('CreateUserDialog', () => {
     const user = userEvent.setup();
     loginAsSuperAdmin();
     mockApi(() => {
-      throw new ApiError(409, 'Email đã được sử dụng');
+      throw new ApiError(409, 'CONFLICT', 'Email đã được sử dụng');
     });
     renderWithProviders(<CreateUserDialog />);
 
@@ -229,7 +234,7 @@ describe('CreateUserDialog', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Tạo' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(postCalls()[0][1].json).toEqual({
+    expect(postCalls()[0][1]).toEqual({
       email: 'nhanvien@cms.local',
       fullName: 'Nguyễn Văn A',
       password: 'MatKhau@123',

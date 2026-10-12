@@ -7,31 +7,31 @@ import { UsersPage } from './users-page';
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>();
-  return { ...actual, api: vi.fn() };
+  return { ...actual, api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() } };
 });
 
 const DEPT_AUDIO = '11111111-1111-4111-8111-111111111111';
 const CREATE_BUTTON = { name: 'Tạo người dùng' };
 
-const apiMock = api as unknown as Mock;
+const apiGetMock = api.get as unknown as Mock;
 
 beforeEach(() => {
-  apiMock.mockReset();
-  apiMock.mockResolvedValue([]);
+  apiGetMock.mockReset();
+  apiGetMock.mockResolvedValue([]);
 });
 
 describe('UsersPage — nút Tạo người dùng (AC2)', () => {
   it('ẩn nút với vai trò User', async () => {
     loginWithGrants({ global: [], departments: { [DEPT_AUDIO]: permissionsOf(ROLES.USER) } });
     renderWithProviders(<UsersPage />);
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/users'));
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalledWith('/users'));
     expect(screen.queryByRole('button', CREATE_BUTTON)).not.toBeInTheDocument();
   });
 
   it('ẩn nút với vai trò Intern', async () => {
     loginWithGrants({ global: [], departments: { [DEPT_AUDIO]: permissionsOf(ROLES.INTERN) } });
     renderWithProviders(<UsersPage />);
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/users'));
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalledWith('/users'));
     expect(screen.queryByRole('button', CREATE_BUTTON)).not.toBeInTheDocument();
   });
 

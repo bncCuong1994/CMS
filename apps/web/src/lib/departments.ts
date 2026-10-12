@@ -17,7 +17,7 @@ export const departmentKeys = {
 export function useDepartments(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: departmentKeys.all,
-    queryFn: () => api<DepartmentRow[]>('/departments'),
+    queryFn: () => api.get<DepartmentRow[]>('/departments'),
     enabled: options.enabled ?? true,
   });
 }

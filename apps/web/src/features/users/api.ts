@@ -41,13 +41,14 @@ export const userKeys = {
 };
 
 export function useUsers() {
-  return useQuery({ queryKey: userKeys.all, queryFn: () => api<UserRow[]>('/users') });
+  return useQuery({ queryKey: userKeys.all, queryFn: () => api.get<UserRow[]>('/users') });
 }
 
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreateUserBody) => api<CreateUserResponse>('/users', { method: 'POST', json: body }),
+    mutationFn: (body: CreateUserBody) => api.post<CreateUserResponse>('/users', body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
+    meta: { skipErrorToast: true },
   });
 }

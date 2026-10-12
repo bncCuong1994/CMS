@@ -22,14 +22,14 @@ export function LoginPage() {
     setPending(true);
     setError(null);
     try {
-      const session = await api<LoginResponse>('/auth/login', {
-        method: 'POST',
-        json: { email: form.get('email'), password: form.get('password') },
+      const session = await api.post<LoginResponse>('/auth/login', {
+        email: form.get('email'),
+        password: form.get('password'),
       });
       setSession(session);
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không kết nối được máy chủ');
+      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, thử lại sau');
     } finally {
       setPending(false);
     }

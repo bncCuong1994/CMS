@@ -1,60 +1,26 @@
-import { useAuthStore } from '@/features/auth/auth-store';
+import type { AxiosRequestConfig } from 'axios';
+import { http } from './http';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
+export { ApiError, type ApiErrorCode } from './api-error';
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-let refreshing: Promise<boolean> | null = null;
-
-/** Đổi refresh token lấy access token mới; các request song song dùng chung một lần gọi. */
-function refreshTokens(): Promise<boolean> {
-  refreshing ??= (async () => {
-    const { refreshToken, setTokens, clear } = useAuthStore.getState();
-    if (!refreshToken) return false;
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
-    if (!res.ok) {
-      clear();
-      return false;
-    }
-    setTokens(await res.json());
-    return true;
-  })().finally(() => {
-    refreshing = null;
-  });
-  return refreshing;
-}
-
-export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}, retry = true): Promise<T> {
-  const { json, headers, ...rest } = init;
-  const token = useAuthStore.getState().accessToken;
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...rest,
-    headers: {
-      ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    body: json !== undefined ? JSON.stringify(json) : rest.body,
-  });
-
-  if (res.status === 401 && retry && !path.startsWith('/auth/')) {
-    if (await refreshTokens()) return api<T>(path, init, false);
-  }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    const message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
-    throw new ApiError(res.status, message ?? res.statusText);
-  }
-  return (res.status === 204 ? undefined : await res.json()) as T;
-}
+/**
+ * Client HTTP dùng chung cho toàn bộ app.
+ * Mỗi hàm trả thẳng response.data (đã unwrap); 204 trả undefined.
+ */
+export const api = {
+  get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return http.get<T>(url, config).then((r) => r.data);
+  },
+  post<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return http.post<T>(url, body, config).then((r) => (r.status === 204 ? (undefined as T) : r.data));
+  },
+  patch<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return http.patch<T>(url, body, config).then((r) => (r.status === 204 ? (undefined as T) : r.data));
+  },
+  put<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return http.put<T>(url, body, config).then((r) => (r.status === 204 ? (undefined as T) : r.data));
+  },
+  delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return http.delete<T>(url, config).then((r) => (r.status === 204 ? (undefined as T) : r.data));
+  },
+};
