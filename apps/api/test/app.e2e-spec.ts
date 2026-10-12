@@ -105,7 +105,8 @@ describe('Phân quyền theo phòng ban', () => {
       .get('/api/v1/users')
       .set('Authorization', `Bearer ${await login('root@test.local')}`)
       .expect(200);
-    expect(res.body).toHaveLength(4);
+    expect(res.body.data).toHaveLength(4);
+    expect(res.body.meta.total).toBe(4);
   });
 
   it('Admin chỉ thấy người dùng trong phòng mình', async () => {
@@ -113,7 +114,10 @@ describe('Phân quyền theo phòng ban', () => {
       .get('/api/v1/users')
       .set('Authorization', `Bearer ${await login('admin.a@test.local')}`)
       .expect(200);
-    expect(res.body.map((u: { email: string }) => u.email).sort()).toEqual(['admin.a@test.local', 'intern.a@test.local']);
+    expect(res.body.data.map((u: { email: string }) => u.email).sort()).toEqual([
+      'admin.a@test.local',
+      'intern.a@test.local',
+    ]);
   });
 
   it('Admin không xem được phòng không được gán', async () => {

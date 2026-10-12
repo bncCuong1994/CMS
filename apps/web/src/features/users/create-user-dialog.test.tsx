@@ -28,7 +28,7 @@ const apiPostMock = api.post as unknown as Mock;
 function mockApi(createHandler?: () => unknown) {
   apiGetMock.mockImplementation((path: string) => {
     if (path === '/departments') return Promise.resolve(DEPARTMENTS);
-    if (path === '/users') return Promise.resolve([]);
+    if (path === '/users') return Promise.resolve({ data: [], meta: { total: 0, page: 1, pageSize: 20 } });
     return Promise.reject(new Error(`Không mong đợi gọi GET ${path}`));
   });
   apiPostMock.mockImplementation((path: string) => {
@@ -77,7 +77,7 @@ function listUsersCalls() {
  */
 function UsersListProbe() {
   const { data } = useUsers();
-  return <div data-testid="users-probe">{data?.length ?? 0}</div>;
+  return <div data-testid="users-probe">{data?.data.length ?? 0}</div>;
 }
 
 beforeEach(() => {

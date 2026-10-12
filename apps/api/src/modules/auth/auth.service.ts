@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { LoginResponse, MeResponse } from '@cms/shared-types';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
@@ -53,6 +54,18 @@ export class AuthService {
   async logout(refreshToken: string) {
     await this.prisma.refreshToken.updateMany({
       where: { tokenHash: sha256(refreshToken), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  /**
+   * Thu hồi mọi refresh token chưa thu hồi của một người dùng.
+   * Dùng khi đổi vai trò/phạm vi để buộc cấp lại grants (kế hoạch 3.3).
+   * Truyền `tx` để chạy trong cùng transaction với thao tác nghiệp vụ.
+   */
+  revokeAllForUser(userId: string, tx: Prisma.TransactionClient = this.prisma) {
+    return tx.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }
