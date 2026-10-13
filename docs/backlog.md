@@ -57,3 +57,22 @@ Chưa viết story. Ba nhóm chỉ số: hoạt động người dùng, hiệu s
 | **Siết `app.e2e-spec.ts`**: nó assert `auditLog.count({ action: 'user.create' }) === 1` trên **toàn bảng** (có từ giai đoạn 1). Hiện xanh nhờ mỗi file tự `TRUNCATE` + `--runInBand`, nhưng sẽ vỡ khi thêm spec mới chạy song song. Đổi thành đếm theo `entityId`. | Test giòn, dễ đỏ oan và làm mất niềm tin vào suite |
 | Thêm **ESLint + Prettier** cho `apps/web` và `apps/api` | `lint` của web hiện chỉ là `tsc -b --noEmit` → checklist style (đặt tên, độ dài hàm, lồng sâu) không có máy kiểm, chỉ dựa review người |
 | Code-split bundle web | Build cảnh báo chunk 670 kB > 500 kB |
+
+## Giai đoạn 6 — Chấm công trên mobile (iOS, Expo) — **mới, làm song song**
+
+Thêm nghiệp vụ chấm công + app `apps/mobile` (React Native + Expo). Chốt thiết kế xem `docs/decisions.md` (các dòng 2026-10-12 về attendance/mobile). Chỉ phụ thuộc `auth`/`users`/`departments`/`rbac` (đã có), **không** phụ thuộc giai đoạn 3. Chống gian lận nhiều lớp: device binding + Face ID + GPS geofence + server-time + duyệt bất thường. **Bắt buộc online.**
+
+**Thứ tự sub-giai đoạn (không nhảy cóc):**
+
+| Mã | Tiêu đề | Trạng thái | Ghi chú |
+|---|---|---|---|
+| `US-ATT-01` | Dựng app Expo `apps/mobile` + đăng nhập dùng JWT chung | ✅ Xong (nền) | Nền tảng mobile. Expo + TS trong monorepo, `expo-secure-store` giữ token, dùng chung `packages/shared-types`. Login qua `POST /auth/login` hiện có; refresh token. **Chặn mọi story ATT sau.** Story: `docs/stories/attendance/US-ATT-01.md`. Reviewer APPROVE (không CRITICAL/HIGH), 17/17 test pass, typecheck sạch. **Nợ test hygiene (nhỏ, không chặn):** (1) bọc `act()` 3 ca `mutateAsync` lỗi trong `use-login.test.tsx`; (2) teardown `queryClient` sau test (hết cảnh báo worker-leak); (3) thêm test single-flight thật (nhiều 401 song song chỉ refresh 1 lần). |
+| `US-ATT-02` | Gắn thiết bị (device binding) + Admin duyệt đổi máy | Chưa làm | Bảng `user_devices`, enroll 1 user ↔ 1 device; đổi máy → trạng thái `pending`, Admin phòng duyệt (`device.approve`, phạm vi `department`). Quyền mới. Cần migration. |
+| `US-ATT-03` | Cấu hình chấm công (web, Super Admin): `attendance_mode` + vị trí văn phòng/geofence | Chưa làm | `attendance.config` global. `attendance_settings` (mode `hourly\|shift`), `office_locations` (lat/lng/bán kính). Màn cấu hình trên `apps/web`. Đổi chế độ không hồi tố (giả định, xác nhận khi làm). |
+| `US-ATT-04` | Lõi chấm công vào/ra (mode `hourly`): Face ID + GPS geofence + server-time | Chưa làm | `attendance_records`. Face ID bắt buộc, GPS trong geofence mới cho bấm, online-only, giờ lấy theo server. Ghi `activity_events` + cập nhật `last_activity_at`. Quyền `attendance.punch` (own). Phát hiện mock-location → gắn cờ. |
+| `US-ATT-05` | Chế độ ca (`shift`) + tính đi muộn/về sớm | Chưa làm | Định nghĩa ca, gán ca, so giờ chấm với ca để tính muộn/sớm. Phụ thuộc `US-ATT-03`/`US-ATT-04`. |
+| `US-ATT-06` | Đơn từ: xin chấm công bù, nghỉ phép, OT + Admin duyệt | Chưa làm | `leave_requests`/`overtime_requests`/`correction_requests`, luồng duyệt `attendance.approve` (department). Thông báo qua `notifications`. |
+| `US-ATT-07` | Báo cáo chấm công (web) theo phạm vi + xuất Excel | Chưa làm | Super Admin toàn công ty, Admin phòng mình, User bản thân, Intern không có. Tự gắn cờ bất thường (offline — n/a, ngoài vùng, thiết bị mới, lệch giờ). |
+| — | **Nợ phát hành:** Apple Developer Program ($99/năm) cho TestFlight/App Store | Chưa làm | Không chặn dev/test (Expo simulator / dev build free provisioning). Cần khi phát hành thật. |
+
+**Giả định chờ xác nhận khi tới từng story** (ghi rõ để không bỏ trống): vị trí văn phòng do Super Admin cấu hình, có thể nhiều điểm; bán kính geofence mặc định (đề xuất 150 m); định nghĩa ca do Super Admin/Admin lập; đổi `attendance_mode` không hồi tố dữ liệu cũ.
