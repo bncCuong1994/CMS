@@ -145,8 +145,9 @@ describe('CreateUserDialog', () => {
 
     await openDialog(user);
     const preview = screen.getByTestId('role-permissions');
-    // AC4 chốt con số: vai trò USER có đúng 5 quyền, INTERN có đúng 2 quyền.
-    expect(within(preview).getAllByRole('listitem')).toHaveLength(5);
+    // AC4 chốt con số: vai trò USER có đúng 6 quyền (thêm attendance.config_read — US-ATT-03,
+    // decisions.md 2026-10-14), INTERN có đúng 2 quyền.
+    expect(within(preview).getAllByRole('listitem')).toHaveLength(6);
 
     await chooseOption(user, /Vai trò/, 'Intern');
 

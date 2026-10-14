@@ -47,6 +47,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       P.TASK_UPDATE_ANY,
       P.TASK_TYPE_MANAGE,
       P.ANALYTICS_READ,
+      P.ATTENDANCE_CONFIG_READ,
     ],
   },
   {
@@ -54,7 +55,14 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     name: 'User',
     description: 'Nhân viên làm việc trong phòng',
     scopeType: 'department',
-    permissions: [P.USER_READ, P.DEPARTMENT_READ, P.TASK_READ, P.TASK_CREATE, P.TASK_UPDATE_OWN],
+    permissions: [
+      P.USER_READ,
+      P.DEPARTMENT_READ,
+      P.TASK_READ,
+      P.TASK_CREATE,
+      P.TASK_UPDATE_OWN,
+      P.ATTENDANCE_CONFIG_READ,
+    ],
   },
   {
     code: ROLES.INTERN,

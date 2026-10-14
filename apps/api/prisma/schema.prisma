@@ -178,3 +178,37 @@ model ActivityEvent {
   @@index([eventType, occurredAt])
   @@map("activity_events")
 }
+
+/// Cấu hình chấm công: lịch làm việc cố định toàn công ty (singleton — một bản ghi duy nhất).
+/// Giờ lưu dạng "HH:mm" treo tường theo múi giờ công ty. US-ATT-03.
+model AttendanceSettings {
+  id                      String   @id @default(uuid()) @db.Uuid
+  workStart               String   @map("work_start")
+  workEnd                 String   @map("work_end")
+  lunchStart              String?  @map("lunch_start")
+  lunchEnd                String?  @map("lunch_end")
+  /// Ngày làm việc, số thứ ISO 1=T2 … 7=CN.
+  workDays                Int[]    @map("work_days")
+  monthlyLateAllowanceMin Int      @default(60) @map("monthly_late_allowance_min")
+  timezone                String   @default("Asia/Ho_Chi_Minh")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("attendance_settings")
+}
+
+/// Điểm văn phòng kèm bán kính geofence. Xoá mềm bằng deleted_at. US-ATT-03.
+model OfficeLocation {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  latitude  Decimal   @db.Decimal(9, 6)
+  longitude Decimal   @db.Decimal(9, 6)
+  radiusM   Int       @default(150) @map("radius_m")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([isActive, deletedAt])
+  @@map("office_locations")
+}

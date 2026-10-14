@@ -16,6 +16,8 @@ const TRUNCATED_TABLES = [
   'refresh_tokens',
   'audit_logs',
   'activity_events',
+  'attendance_settings',
+  'office_locations',
 ] as const;
 
 /** Chốt an toàn: chỉ cho phép xoá dữ liệu trên database test. */

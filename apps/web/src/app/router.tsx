@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router';
+import { AttendanceSettingsPage } from '@/features/attendance/attendance-settings-page';
 import { LoginPage } from '@/features/auth/login-page';
 import { DashboardPage } from '@/features/dashboard/dashboard-page';
 import { DepartmentsPage } from '@/features/departments/departments-page';
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'departments', element: <DepartmentsPage /> },
+      { path: 'settings/attendance', element: <AttendanceSettingsPage /> },
     ],
   },
 ]);

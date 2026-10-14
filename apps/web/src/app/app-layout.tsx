@@ -13,7 +13,12 @@ export function AppLayout() {
   const { user, accessToken, refreshToken, clear } = useAuthStore();
   if (!accessToken || !user) return <Navigate to="/login" replace />;
 
-  const items = NAV_ITEMS.filter((i) => !i.permission || hasPermission(user.grants, i.permission));
+  const items = NAV_ITEMS.filter((i) => {
+    if (!i.permission) return true;
+    // Quyền global-only: kiểm thẳng grants.global để Admin phòng không lọt (decisions 2026-10-12).
+    if (i.globalOnly) return user.grants.global.includes(i.permission);
+    return hasPermission(user.grants, i.permission);
+  });
   const roleText = user.roles
     .map((r) => (r.departmentName ? `${ROLE_LABELS[r.role]} · ${r.departmentName}` : ROLE_LABELS[r.role]))
     .join(', ');

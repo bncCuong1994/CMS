@@ -15,6 +15,8 @@ export const PERMISSIONS = {
   TASK_TYPE_MANAGE: 'task_type.manage',
   ANALYTICS_READ: 'analytics.read',
   AUDIT_READ: 'audit.read',
+  ATTENDANCE_CONFIG: 'attendance.config',
+  ATTENDANCE_CONFIG_READ: 'attendance.config_read',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -37,4 +39,6 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   'task_type.manage': 'Quản lý loại công việc của phòng',
   'analytics.read': 'Xem báo cáo, số liệu',
   'audit.read': 'Xem nhật ký hệ thống',
+  'attendance.config': 'Cấu hình chấm công',
+  'attendance.config_read': 'Xem cấu hình chấm công',
 };
