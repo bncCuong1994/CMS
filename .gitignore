@@ -5,3 +5,4 @@ dist/
 !.env.example
 .claude/settings.local.json
 e2e/.auth/
+.DS_Store

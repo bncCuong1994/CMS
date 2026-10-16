@@ -5,6 +5,8 @@ type MockSecureStore = typeof SecureStore & { __reset: () => void };
 
 const ACCESS_KEY = 'cms.accessToken';
 const REFRESH_KEY = 'cms.refreshToken';
+const GATED_KEY = 'cms.biometricRefreshToken';
+const ENABLED_KEY = 'cms.biometricLoginEnabled';
 
 function resetAll() {
   (SecureStore as MockSecureStore).__reset();
@@ -14,6 +16,7 @@ function resetAll() {
     refreshToken: null,
     user: null,
     hydrated: false,
+    biometricEnabled: false,
   });
 }
 
@@ -57,14 +60,55 @@ describe('auth-store (secure-store)', () => {
     expect(useAuthStore.getState().hydrated).toBe(true);
   });
 
-  it('clear xoá token khỏi secure-store (AC7)', async () => {
+  it('clear xoá token + khe Face ID gated + cờ khỏi secure-store (AC7)', async () => {
     await useAuthStore.getState().setTokens({ accessToken: 'acc-4', refreshToken: 'ref-4' });
+    await useAuthStore.getState().enableBiometric();
 
     await useAuthStore.getState().clear();
 
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(ACCESS_KEY);
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(REFRESH_KEY);
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(GATED_KEY);
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(ENABLED_KEY);
     expect(useAuthStore.getState().accessToken).toBeNull();
     expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().biometricEnabled).toBe(false);
+  });
+
+  it('enableBiometric lưu refresh token hiện tại vào khe gated + cờ (AC3)', async () => {
+    await useAuthStore.getState().setTokens({ accessToken: 'acc-5', refreshToken: 'ref-5' });
+
+    const ok = await useAuthStore.getState().enableBiometric();
+
+    expect(ok).toBe(true);
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(GATED_KEY, 'ref-5', {
+      requireAuthentication: true,
+    });
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(ENABLED_KEY, '1');
+    expect(useAuthStore.getState().biometricEnabled).toBe(true);
+  });
+
+  it('disableBiometric xoá khe gated + cờ nhưng GIỮ phiên hiện tại (AC8)', async () => {
+    await useAuthStore.getState().setTokens({ accessToken: 'acc-6', refreshToken: 'ref-6' });
+    await useAuthStore.getState().enableBiometric();
+
+    await useAuthStore.getState().disableBiometric();
+
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(GATED_KEY);
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(ENABLED_KEY);
+    expect(useAuthStore.getState().biometricEnabled).toBe(false);
+    // Phiên GIỮ nguyên: access/refresh token thường không bị xoá.
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalledWith(ACCESS_KEY);
+    expect(useAuthStore.getState().accessToken).toBe('acc-6');
+  });
+
+  it('hydrate nạp cờ biometric đã bật (ẩn/hiện nút Face ID — AC1)', async () => {
+    await useAuthStore.getState().setTokens({ accessToken: 'acc-7', refreshToken: 'ref-7' });
+    await useAuthStore.getState().enableBiometric();
+    useAuthStore.setState({ accessToken: null, refreshToken: null, biometricEnabled: false, hydrated: false });
+
+    await useAuthStore.getState().hydrate();
+
+    expect(useAuthStore.getState().biometricEnabled).toBe(true);
   });
 });
