@@ -43,6 +43,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-local-authentication',
       { faceIDPermission: 'Dùng Face ID để mở lại app mà không cần gõ mật khẩu.' },
     ],
+    // Sửa AppDelegate cho khớp vòng đời UIScene (EXExpoAppSceneDelegate) mà
+    // UIApplicationSceneManifest ở trên yêu cầu — nếu không app crash khi khởi chạy.
+    './plugins/withSceneAppDelegate',
   ],
   experiments: {
     typedRoutes: true,
